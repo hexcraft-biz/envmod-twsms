@@ -7,7 +7,7 @@ import (
 	"os"
 	"strconv"
 
-	resph "github.com/hexcraft-biz/misc/resp"
+	"github.com/hexcraft-biz/her"
 )
 
 // ================================================================
@@ -19,10 +19,10 @@ type Twsms struct {
 	URL      *url.URL
 }
 
-func New() (*Twsms, *resph.Resp) {
+func New() (*Twsms, *her.Error) {
 	u, err := url.Parse("https://api.twsms.com/json/sms_send.php")
 	if err != nil {
-		return nil, resph.NewError(http.StatusInternalServerError, err, nil)
+		return nil, her.NewError(http.StatusInternalServerError, err, nil)
 	}
 
 	e := &Twsms{
@@ -45,26 +45,26 @@ type TwSmsSendApiResp struct {
 	Msgid int64  `json:"msgid"`
 }
 
-func (r TwSmsSendApiResp) Error() *resph.Resp {
+func (r TwSmsSendApiResp) Error() *her.Error {
 	if code, err := strconv.Atoi(r.Code); err != nil {
-		return resph.NewError(http.StatusInternalServerError, err, nil)
+		return her.NewError(http.StatusInternalServerError, err, nil)
 	} else {
 		switch {
 		case code <= 1:
 			return nil
 		case code >= 10 && code <= 12:
-			return resph.NewErrorWithMessage(http.StatusInternalServerError, r.Text, nil)
+			return her.NewErrorWithMessage(http.StatusInternalServerError, r.Text, nil)
 		case code >= 50 && code <= 140:
-			return resph.NewErrorWithMessage(http.StatusInternalServerError, r.Text, nil)
+			return her.NewErrorWithMessage(http.StatusInternalServerError, r.Text, nil)
 		default:
-			return resph.NewErrorWithMessage(http.StatusServiceUnavailable, r.Text, nil)
+			return her.NewErrorWithMessage(http.StatusServiceUnavailable, r.Text, nil)
 		}
 	}
 }
 
-func (e Twsms) SendSms(to []string, subject, body string) *resph.Resp {
+func (e Twsms) SendSms(to []string, subject, body string) *her.Error {
 	if len(to) != 1 {
-		return resph.NewErrorWithMessage(http.StatusInternalServerError, "twsms module only support single reciever each request", nil)
+		return her.NewErrorWithMessage(http.StatusInternalServerError, "twsms module only support single reciever each request", nil)
 	}
 
 	if subject != "" {
@@ -77,24 +77,24 @@ func (e Twsms) SendSms(to []string, subject, body string) *resph.Resp {
 	e.URL.RawQuery = q.Encode()
 
 	if req, err := http.NewRequest("POST", e.URL.String(), nil); err != nil {
-		return resph.NewError(http.StatusInternalServerError, err, nil)
+		return her.NewError(http.StatusInternalServerError, err, nil)
 	} else {
 		client := &http.Client{}
 		if resp, err := client.Do(req); err != nil {
-			return resph.NewError(http.StatusInternalServerError, err, nil)
+			return her.NewError(http.StatusInternalServerError, err, nil)
 		} else {
 			defer resp.Body.Close()
 			switch {
 			case resp.StatusCode >= 500:
-				return resph.ErrServiceUnavailable
+				return her.ErrServiceUnavailable
 			case resp.StatusCode >= 400:
-				return resph.ErrInternalServerError
+				return her.ErrInternalServerError
 			}
 
 			apiresp := new(TwSmsSendApiResp)
 			decoder := json.NewDecoder(resp.Body)
 			if err := decoder.Decode(apiresp); err != nil {
-				return resph.NewError(http.StatusInternalServerError, err, nil)
+				return her.NewError(http.StatusInternalServerError, err, nil)
 			} else {
 				return apiresp.Error()
 			}
