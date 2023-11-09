@@ -19,7 +19,7 @@ type Twsms struct {
 	URL      *url.URL
 }
 
-func New() (*Twsms, *her.Error) {
+func New() (*Twsms, her.Error) {
 	u, err := url.Parse("https://api.twsms.com/json/sms_send.php")
 	if err != nil {
 		return nil, her.NewError(http.StatusInternalServerError, err, nil)
@@ -45,7 +45,7 @@ type TwSmsSendApiResp struct {
 	Msgid int64  `json:"msgid"`
 }
 
-func (r TwSmsSendApiResp) Error() *her.Error {
+func (r TwSmsSendApiResp) Error() her.Error {
 	if code, err := strconv.Atoi(r.Code); err != nil {
 		return her.NewError(http.StatusInternalServerError, err, nil)
 	} else {
@@ -62,7 +62,7 @@ func (r TwSmsSendApiResp) Error() *her.Error {
 	}
 }
 
-func (e Twsms) SendSms(to []string, subject, body string) *her.Error {
+func (e Twsms) SendSms(to []string, subject, body string) her.Error {
 	if len(to) != 1 {
 		return her.NewErrorWithMessage(http.StatusInternalServerError, "twsms module only support single reciever each request", nil)
 	}
